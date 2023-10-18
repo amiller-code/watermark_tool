@@ -8,6 +8,7 @@ SHADE_CONVERSION = {'Light': (255, 255, 255),
 image = Image.new('RGBA', (100, 100))
 
 
+# Function controlling GUI format and actions
 def gui():
     watermark_complete = False
     sg.theme('DarkTeal11')
@@ -32,10 +33,12 @@ def gui():
         if event == sg.WIN_CLOSED or event == 'Cancel':
             values = ['', 0]
             break
+        # If user selects an image, display the filename on the GUI
         if event == 'image':
             file_path = values['image']
             file_name = os.path.basename(file_path)
             window['reflect_image'].update(value=file_name)
+        # If user clicks 'Run', check for errors and if there are none, initiate the add_watermark function
         if event == 'run':
             if values['image'] == '':
                 sg.popup('Please choose a file')
@@ -59,12 +62,13 @@ def gui():
                 sg.popup('Watermark string too long, try removing some characters')
                 continue
             sg.popup('Watermark Added!')
-
+        # If user clicks the 'Show' button, verify that they have run the watermark tool and if they have, display the watermarked image
         if event == 'show':
             if not watermark_complete:
                 sg.popup('The watermarked image has not been created yet. Please click "Run"')
                 continue
             image.show()
+        # If user clicks the 'Show' button, verify that they have run the watermark tool and if they have, popup the save menu
         if event == 'save':
             if not watermark_complete:
                 sg.popup('The watermarked image has not been created yet. Please click "Run"')
@@ -88,25 +92,34 @@ def gui():
             sg.popup(f'Image saved to:\n\n{parent_path}/{new_file_name}')
 
 
+# Function to add the watermark to the image
 def add_watermark(file: str, text: str, opacity: int, shade: str) -> bool:
     global image
     font = ImageFont.truetype('ELEPHNT.TTF', 100, encoding='unic')
     image = Image.open(file)
+    # Calculate the angle and length of the watermark based on the hypotenuse of the image
     angle = math.degrees(math.atan(image.size[1] / image.size[0]))
     diagonal = math.sqrt(image.size[1] ** 2 + image.size[0] ** 2)
+    # Create a layer with the text the user input
     text_temp = Image.new(mode='RGBA', size=image.size, color=(0, 0, 0, 0))
     text_draw = ImageDraw.Draw(text_temp)
     x, y, text_width, text_height = text_draw.textbbox(xy=(0, 0), text=text, font=font)
+    # If the text is longer than the image diagonal, return False to show that the watermark did not add
     if text_width > diagonal * 0.8:
         return False
+    # Format the text how the user specified
     text_draw.text(xy=((text_temp.size[0] - text_width) / 2, (text_temp.size[1] - text_height) / 2),
                    text=text, font=font, fill=SHADE_CONVERSION[shade])
+    # Rotate the text to the correct angle
     text_temp = text_temp.rotate(angle=angle, expand=True, center=(image.size[0] / 2, image.size[1] / 2))
+    # Create a mask at the correct opacity and transfer to the text
     text_transparent = text_temp.copy()
     text_transparent.putalpha(int(opacity * 255 / 100))
     text_temp.paste(text_transparent, mask=text_temp)
+    # Position the text to the center of the image
     horizontal_shift = int((image.size[0] - text_temp.size[0]) / 2)
     vertical_shift = int((image.size[1] - text_temp.size[1]) / 2)
+    # Paste the formatted text to the original image
     image.paste(text_temp, box=(horizontal_shift, vertical_shift), mask=text_temp)
     return True
 
